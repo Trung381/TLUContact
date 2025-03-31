@@ -4,6 +4,10 @@ package com.example.tlucontact;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -107,12 +111,13 @@ public class StaffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             ((StaffViewHolder) holder).bind(staff);
             ((StaffViewHolder) holder).cardView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, StaffDetailActivity.class);
+                intent.putExtra("ID", staff.getId());
                 intent.putExtra("NAME", staff.getName());
                 intent.putExtra("POSITION", staff.getPosition());
                 intent.putExtra("DEPARTMENT", staff.getDepartment());
                 intent.putExtra("PHONE", staff.getPhone());
                 intent.putExtra("EMAIL", staff.getEmail());
-                intent.putExtra("IMAGE", staff.getImageResource());
+                intent.putExtra("IMAGE_BASE64", staff.getImageBase64());
                 context.startActivity(intent);
             });
         }
@@ -175,7 +180,29 @@ public class StaffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             nameTextView.setText(staff.getName());
             positionTextView.setText(staff.getPosition());
             departmentTextView.setText(staff.getDepartment());
-            imageView.setImageResource(staff.getImageResource());
+            
+            // Chuyển đổi base64 thành bitmap và hiển thị
+            if (staff.getImageBase64() != null && !staff.getImageBase64().isEmpty()) {
+                try {
+                    String base64String = staff.getImageBase64();
+                    
+                    // Xử lý trường hợp base64 có data URI prefix
+                    if (base64String.contains("base64,")) {
+                        base64String = base64String.split("base64,")[1];
+                    }
+                    
+                    byte[] decodedString = Base64.decode(base64String, Base64.DEFAULT);
+                    Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                    imageView.setImageBitmap(decodedBitmap);
+                } catch (Exception e) {
+                    // Nếu có lỗi, hiển thị ảnh mặc định
+                    Log.e("StaffAdapter", "Error decoding base64: " + e.getMessage(), e);
+                    imageView.setImageResource(R.drawable.img_person);
+                }
+            } else {
+                // Nếu không có ảnh, hiển thị ảnh mặc định
+                imageView.setImageResource(R.drawable.img_person);
+            }
         }
     }
 }

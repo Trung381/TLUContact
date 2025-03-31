@@ -1,8 +1,12 @@
 package com.example.tlucontact;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -38,14 +42,36 @@ public class StaffDetailActivity extends AppCompatActivity {
         String department = intent.getStringExtra("DEPARTMENT");
         String phone = intent.getStringExtra("PHONE");
         String email = intent.getStringExtra("EMAIL");
-        int imageResource = intent.getIntExtra("IMAGE", R.drawable.img_person);
+        String imageBase64 = intent.getStringExtra("IMAGE_BASE64");
 
         nameTextView.setText(name);
         positionTextView.setText(position);
         departmentTextView.setText(department);
         phoneTextView.setText(phone);
         emailTextView.setText(email);
-        imageView.setImageResource(imageResource);
+        
+        // Chuyển đổi base64 thành bitmap và hiển thị
+        if (imageBase64 != null && !imageBase64.isEmpty()) {
+            try {
+                String base64String = imageBase64;
+                
+                // Xử lý trường hợp base64 có data URI prefix
+                if (base64String.contains("base64,")) {
+                    base64String = base64String.split("base64,")[1];
+                }
+                
+                byte[] decodedString = Base64.decode(base64String, Base64.DEFAULT);
+                Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                imageView.setImageBitmap(decodedBitmap);
+            } catch (Exception e) {
+                // Nếu có lỗi, hiển thị ảnh mặc định
+                Log.e("StaffDetailActivity", "Error decoding base64: " + e.getMessage(), e);
+                imageView.setImageResource(R.drawable.img_person);
+            }
+        } else {
+            // Nếu không có ảnh, hiển thị ảnh mặc định
+            imageView.setImageResource(R.drawable.img_person);
+        }
 
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override

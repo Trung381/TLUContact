@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.SearchView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -21,12 +22,12 @@ public class MainActivity extends AppCompatActivity {
     private Button btnSort;
     private boolean isSortedAscending = true;
 
-    private List<Department> departmentList;
-    private List<Staff> staffList;
+    private List<Department> departmentList = new ArrayList<>();
+    private List<Staff> staffList = new ArrayList<>();
 
     private DepartmentAdapter departmentAdapter;
     private StaffAdapter staffAdapter;
-    private DatabaseManager databaseManager;
+    private FirestoreManager firestoreManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,11 +43,8 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        databaseManager = new DatabaseManager(this);
-        departmentList = databaseManager.getAllDepartments();
-        staffList = databaseManager.getAllStaff();
-
-
+        // Khởi tạo FirestoreManager thay vì DatabaseManager
+        firestoreManager = new FirestoreManager();
 
         // tạo adapter với context chuẩn bị dữ liệu cho recyclerView
         departmentAdapter = new DepartmentAdapter(departmentList, this);
@@ -55,13 +53,16 @@ public class MainActivity extends AppCompatActivity {
         // set hiển thị mặc định với departmentAdapter
         recyclerView.setAdapter(departmentAdapter);
 
+        // Tải dữ liệu từ Firestore
+        loadDepartmentsFromFirestore();
+
         // hàm click vào để hiển thị department
         btnDepartments.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 recyclerView.setAdapter(departmentAdapter);
                 updateSearchHint("Tìm phòng ban...");
-                btnSort.setText("Z-A");
+                btnSort.setText(isSortedAscending ? "Z-A" : "A-Z");
             }
         });
 
@@ -69,9 +70,14 @@ public class MainActivity extends AppCompatActivity {
         btnStaff.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Nếu staffList trống, tải dữ liệu từ Firestore
+                if (staffList.isEmpty()) {
+                    loadStaffFromFirestore();
+                }
+                
                 recyclerView.setAdapter(staffAdapter);
                 updateSearchHint("Tìm CBNV...");
-                btnSort.setText("A-Z");
+                btnSort.setText(isSortedAscending ? "Z-A" : "A-Z");
             }
         });
 
@@ -99,29 +105,51 @@ public class MainActivity extends AppCompatActivity {
         btnSort.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                isSortedAscending = !isSortedAscending;
                 if (recyclerView.getAdapter() == departmentAdapter) {
-                    sortDepartments();
+                    departmentAdapter.setSortedList(departmentList, isSortedAscending);
                 } else {
-                    sortStaff();
+                    staffAdapter.setSortedList(staffList, isSortedAscending);
                 }
+                btnSort.setText(isSortedAscending ? "Z-A" : "A-Z");
+            }
+        });
+    }
+
+    private void loadDepartmentsFromFirestore() {
+        firestoreManager.getAllDepartments(new FirestoreManager.OnDepartmentsLoadedListener() {
+            @Override
+            public void onDepartmentsLoaded(List<Department> departments) {
+                departmentList.clear();
+                departmentList.addAll(departments);
+                departmentAdapter.setSortedList(departmentList, isSortedAscending);
+            }
+
+            @Override
+            public void onDepartmentsError(Exception e) {
+                Toast.makeText(MainActivity.this, "Lỗi khi tải danh sách phòng ban: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadStaffFromFirestore() {
+        firestoreManager.getAllStaff(new FirestoreManager.OnStaffLoadedListener() {
+            @Override
+            public void onStaffLoaded(List<Staff> staff) {
+                staffList.clear();
+                staffList.addAll(staff);
+                staffAdapter.setSortedList(staffList, isSortedAscending);
+            }
+
+            @Override
+            public void onStaffError(Exception e) {
+                Toast.makeText(MainActivity.this, "Lỗi khi tải danh sách nhân viên: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void updateSearchHint(String hint) {
         searchView.setQueryHint(hint);
-    }
-
-    private void sortDepartments() {
-        isSortedAscending = !isSortedAscending; // Đảo ngược trạng thái sắp xếp
-        departmentAdapter.setSortedList(departmentList, isSortedAscending); // Gọi setSortedList từ adapter
-        btnSort.setText(isSortedAscending ? "Z-A" : "A-Z"); // Cập nhật nút
-    }
-
-    private void sortStaff() {
-        isSortedAscending = !isSortedAscending; // Đảo ngược trạng thái sắp xếp
-        staffAdapter.setSortedList(staffList, isSortedAscending); // Gọi setSortedList từ adapter
-        btnSort.setText(isSortedAscending ? "Z-A" : "A-Z"); // Cập nhật nút
     }
 }
 
